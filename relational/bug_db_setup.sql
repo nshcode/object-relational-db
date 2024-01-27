@@ -12,36 +12,37 @@ create table accounts (
 
 create table issues (
     issue_id     integer
-    ,summary     varchar(20)
-    ,priority    varchar(20) default 'Normal'
+    ,status      varchar(20) default 'NEW'
+    ,priority    varchar(20)
     ,reported_by integer
     ,assigned_to integer
     ,kind        varchar(10)
     ,primary key (issue_id)
     ,foreign key (reported_by) references accounts(account_id)
     ,foreign key (assigned_to) references accounts(account_id)
-    ,check (priority in ('High', 'Normal', 'Low'))
-    ,check (kind in ('Bug', 'Feature'))
+    ,check (status in ('NEW', 'ASSIGNED', 'IN PROCESS', 'FINISHED'))
+    ,check (kind in ('BUG', 'FEATURE'))
 );
 
 create table bugs (
     issue_id          integer
     ,severity         varchar(20)
     ,version_affected varchar(20)
-    ,kind             varchar(10) default 'Bug'
+    ,kind             varchar(10) default 'BUG'
     ,primary key (issue_id)
     ,foreign key (issue_id) references issues(issue_id)
-    ,check (kind in ('Bug'))
+    ,check (kind in ('BUG'))
 );
 
 create table feature_requests (
     issue_id integer
     ,sponsor varchar(50)
-    ,kind   varchar(10) default 'Feature'
+    ,kind   varchar(10) default 'FEATURE'
     ,primary key (issue_id)
     ,foreign key (issue_id) references issues(issue_id)
-    ,check (kind in ('Feature'))
+    ,check (kind in ('FEATURE'))
 );
+
 
 create table comments (
     comment_id integer
@@ -49,7 +50,7 @@ create table comments (
     ,issue_id  integer
     ,author_id integer
     ,primary key (comment_id)
-    ,foreign key (issue_id)  references issues(issue_id)
+    ,foreign key (issue_id) references issues(issue_id)
     ,foreign key (author_id) references accounts(account_id) 
 );
 
@@ -64,29 +65,12 @@ create table products (
     product_id    integer
     ,product_name varchar(50)
     ,primary key(product_id)
-    ,unique (product_name)
-);
-
-create table status (
-    status_id integer
-    ,status   varchar(20) 
-    ,primary key (status_id)
-    ,unique(status)
-    ,check (status in ('New'
-                        ,'Assigned'
-                        ,'In-Progress'
-                        ,'Reviewing'
-                        ,'Finished'
-                    )
-            )
 );
 
 create table issues_products (
     issue_id    integer
     ,product_id integer
-    ,status_id  integer
-    ,primary key (issue_id, product_id, status_id)
-    ,foreign key (issue_id)   references issues (issue_id)
+    ,primary key (issue_id, product_id)
+    ,foreign key (issue_id) references issues (issue_id)
     ,foreign key (product_id) references products (product_id)
-    ,foreign key (status_id)  references status (status_id)  
 );

@@ -15,7 +15,7 @@ drop type account_typ;
 -- =====================
 -- Accounts
 -- =====================
-create type account_typ as object (
+create or replace type account_typ as object (
     account_id    integer
     ,account_name varchar(20)
     ,email        varchar(100)
@@ -24,16 +24,24 @@ create type account_typ as object (
 
 create table accounts of account_typ (
     primary key (account_id)
+    ,unique (account_name)
 );
 
-insert into accounts values (account_typ(1, 'bob',   'bon@abc.com'));
---insert into accounts values (account_typ(2, 'alice', 'alice@abc.com'));
+-- Method 1
+insert into accounts 
+    values (account_typ(1, 'bob',   'bon@abc.com'));
+-- Method 2   
 insert into accounts(account_id, account_name, email)
-values (2, 'alice', 'alice@abc.com');
---delete accounts where account_id = 2;
+    values (2, 'alice', 'alice@abc.com');
 
 select account_id, account_name, email from accounts;
-select value(x), ref(x), deref(ref(x)) from accounts x where value(x) is of (account_typ) ;
+select value(a) from accounts a;
+
+update accounts 
+set    email = 'alice@abc.org'
+where  account_name = 'alice';
+
+delete from accounts where account_name = 'alice';
 
 -- ====================
 -- Issues
@@ -41,8 +49,8 @@ select value(x), ref(x), deref(ref(x)) from accounts x where value(x) is of (acc
 
 create type issue_typ as object (
     issue_id     integer
-    ,status      varchar(20)
-    ,priority     varchar(20)
+    ,suammry     varchar(20)
+    ,priority    varchar(20)
     ,reported_by ref account_typ
     ,assigned_to ref account_typ
  ) not final;
@@ -54,21 +62,41 @@ create type issue_typ as object (
     ,foreign key (assigned_to) references accounts
  );
 
-insert into issues(issue_id, status, priority, reported_by) 
-values (
-    1
-    ,'new'
-    ,'hoch'
-    ,(select ref(p) from accounts p where p.account_name = 'bob')
-);
+create type bug_typ under issue_typ (
+    severity          varchar(20)
+    ,version_affected varchar(20)
+ );
+ /
+ 
+ create type feature_typ under issue_typ (
+    sponsor varchar(50)
+ );
+ /
+ 
+ insert into issues 
+    values (
+        bug_typ(1, 
+                'crash when I save'
+                ,'HIGH'
+                ,(select ref(p) from accounts p where account_name = 'bob')
+                , null
+                ,'CRITICAL'
+                ,'1.0'
+            )
+    );
 
-select value(p) from issues p;
-select deref(p.reported_by) from issues p;
+insert into issues 
+    values (
+        feature_typ(2
+                    ,'increase performance', 'NORMAL'
+                    ,(select ref(p) from accounts p where account_name = 'alice')
+                    ,null
+                    ,'xyz sponsor'
+            )
+    );
 
-update issues 
-set status = 'assigned'
-    ,assigned_to = (select ref(p) from accounts p where p.account_name = 'alice')
-where issue_id = 1;
+select * from issues p where value(p) is of (bug_typ);
+
 
 -- ==================
 -- Comments
@@ -98,43 +126,6 @@ create or replace type comment_typ as object (
  delete from comments;
  select * from comments;
  
- -- ==========================
- -- Bug + Feature
- -- ==========================
- 
- create type bug_typ under issue_typ (
-    severity          varchar(20)
-    ,version_affected varchar(20)
- );
- /
- 
- create type feature_typ under issue_typ (
-    sponsor varchar(50)
- );
- /
- 
- delete from issues;
- 
- insert into issues 
-    values (
-        bug_typ(1, 'new', 'normal'
-                ,(select ref(p) from accounts p where account_name = 'bob')
-                , null
-                ,'high', '1.0'
-                )
-    );
-
-insert into issues 
-    values (
-        feature_typ(2, 'new', 'hoch'
-                ,(select ref(p) from accounts p where account_name = 'alice')
-                ,null
-                ,'xyz'
-                )
-    );
-
-select * from issues p where value(p) is of (bug_typ);
-
 -- ===============
 -- Products
 -- ===============
