@@ -1,9 +1,11 @@
 drop table issues_products;
+drop table status;
 drop table products;
-drop table issues;
 drop table comments;
+drop table issues;
 drop table accounts;
 
+-- drop type tag_typ;
 drop type tag_tab_typ;
 drop type product_typ;
 drop type feature_typ; 
@@ -27,15 +29,20 @@ create table accounts of account_typ (
     ,unique (account_name)
 );
 
+delete from accounts;
 -- Method 1
-insert into accounts 
-    values (account_typ(1, 'bob',   'bon@abc.com'));
--- Method 2   
-insert into accounts(account_id, account_name, email)
-    values (2, 'alice', 'alice@abc.com');
+INSERT INTO accounts 
+VALUES (account_typ(1, 'bob',   'bon@abc.com'));
 
-select account_id, account_name, email from accounts;
-select value(a) from accounts a;
+-- Method 2   
+INSERT INTO accounts(account_id, account_name, email)
+VALUES (2, 'alice', 'alice@abc.com');
+
+-- Method 1
+SELECT account_id, account_name, email FROM accounts;
+
+-- Method 2
+SELECT  VALUE(a) FROM accounts a;
 
 update accounts 
 set    email = 'alice@abc.org'
@@ -49,7 +56,7 @@ delete from accounts where account_name = 'alice';
 
 create type issue_typ as object (
     issue_id     integer
-    ,suammry     varchar(20)
+    ,summary     varchar(20)
     ,priority    varchar(20)
     ,reported_by ref account_typ
     ,assigned_to ref account_typ
@@ -60,44 +67,10 @@ create type issue_typ as object (
     primary key (issue_id)
     ,foreign key (reported_by) references accounts
     ,foreign key (assigned_to) references accounts
+    ,check (priority in ('High', 'Normal', 'Low'))
  );
-
-create type bug_typ under issue_typ (
-    severity          varchar(20)
-    ,version_affected varchar(20)
- );
- /
  
- create type feature_typ under issue_typ (
-    sponsor varchar(50)
- );
- /
- 
- insert into issues 
-    values (
-        bug_typ(1, 
-                'crash when I save'
-                ,'HIGH'
-                ,(select ref(p) from accounts p where account_name = 'bob')
-                , null
-                ,'CRITICAL'
-                ,'1.0'
-            )
-    );
-
-insert into issues 
-    values (
-        feature_typ(2
-                    ,'increase performance', 'NORMAL'
-                    ,(select ref(p) from accounts p where account_name = 'alice')
-                    ,null
-                    ,'xyz sponsor'
-            )
-    );
-
-select * from issues p where value(p) is of (bug_typ);
-
-
+-- ===================
 -- ==================
 -- Comments
 -- ==================
@@ -115,17 +88,6 @@ create or replace type comment_typ as object (
     ,foreign key (author) references accounts
  );
  
- insert into comments(comment_id, text, issue, author)
- values (
-    1
-    ,'a comment'
-    ,(select ref(p) from issues p where issue_id = 1)
-    ,(select ref(p) from accounts p where p.account_name = 'alice')
- );
- 
- delete from comments;
- select * from comments;
- 
 -- ===============
 -- Products
 -- ===============
@@ -136,14 +98,85 @@ create type product_typ as object (
  );
  /
  
+ 
  create table products of product_typ (
     primary key(product_id)
+    ,unique (product_name)
  );
  
+ 
  create table issues_products (
-    issue    ref issue_typ
-    ,product ref product_typ
+    issue      ref issue_typ
+    ,product   ref product_typ
+    ,status    varchar(20)
+    ,foreign key (issue)     references issues
+    ,foreign key (product)   references products
+    ,check (status in ('New'
+                        ,'Assigned'
+                        ,'In-Progress'
+                        ,'Reviewing'
+                        ,'Finished'
+                    )
+            )
  );
+
+-- ====================
+create type bug_typ under issue_typ (
+    severity          varchar(20)
+    ,version_affected varchar(20)
+ );
+ /
+ 
+ create type feature_typ under issue_typ (
+    sponsor varchar(50)
+ );
+ /
+ -- =============================
+ -- Data
+ -- ==============================
+ 
+insert into issues 
+values (
+    bug_typ(1, 
+        'crash when I save'
+        ,'High'
+        ,(select ref(p) 
+            from accounts p 
+            where account_name = 'bob'
+        )
+        , null
+        ,'Critical'
+        ,'1.0'
+    )
+);
+
+insert into issues 
+values (feature_typ(2
+            ,'increase performance', 'Normal'
+            ,(select ref(p) 
+                from accounts p 
+                where account_name = 'alice'
+            )
+            ,null
+            ,'xyz sponsor'
+        )
+);
+
+select * from issues p where value(p) is of (bug_typ);
+ 
+ insert into comments(comment_id, text, issue, author)
+ values (1
+    ,'a comment'
+    ,(select ref(p) from issues p where issue_id = 1)
+    ,(select ref(p) 
+        from accounts p 
+        where p.account_name = 'alice'
+    )
+ );
+ 
+ delete from comments;
+ select * from comments;
+ 
  
  insert into products 
  values (product_typ('1', 'Open RoundFile'));
@@ -156,3 +189,61 @@ create type product_typ as object (
     
 select deref(p.issue), deref(p.product) from issues_products p;
 select deref(p.issue).issue_id, deref(p.product).product_name from issues_products p;
+
+-- ===================
+-- Tags
+-- ===================
+
+drop table issues_products;
+drop table issues;
+
+create type tag_typ as object (
+    tag varchar(50)
+);
+/
+drop type tag_tab_typ;
+create type tag_tab_typ as table of tag_typ
+/
+
+create table issues (
+    issue issue_typ
+    ,issue_tags tag_tab_typ
+    ,primary key (issue.issue_id)
+)
+nested table issue_tags store as issue_tags_tab; 
+
+INSERT INTO issues (issue)
+VALUES (
+    bug_typ(1, 
+        'crash when I save'
+        ,'High'
+        ,(SELECT REF(p) 
+            FROM accounts p 
+            WHERE account_name = 'bob'
+        )
+        , null
+        ,'Critical'
+        ,'1.0'
+    )
+);
+
+UPDATE issues 
+SET issue_tags = tag_tab_typ(tag_typ('crash'), tag_typ('svae'));
+
+select 
+    * 
+from (select issue from issues) x;
+
+
+SELECT t.tag
+FROM THE (SELECT issue_tags
+            FROM issues s
+            WHERE   s.issue.issue_id = 1
+        ) t;
+        
+select 
+    *
+from issues s
+join table (issues.issue_tags) t
+    on issues
+;
