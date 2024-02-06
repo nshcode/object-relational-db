@@ -1,3 +1,6 @@
+-- ====================
+-- Relational Version
+-- ===================
 drop table issues_products;
 drop table products;
 drop table status;
