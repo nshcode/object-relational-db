@@ -19,7 +19,7 @@ CREATE OR REPLACE TYPE account_typ AS OBJECT (
 -- ================
 -- issue
 -- ================
-CREATE TYPE issue_typ AS OBJECT (
+CREATE OR REPLACE TYPE issue_typ AS OBJECT (
     issue_id     INTEGER
     ,summary     VARCHAR(50)
     ,priority    VARCHAR(20)
@@ -28,13 +28,13 @@ CREATE TYPE issue_typ AS OBJECT (
  ) NOT FINAL;
  /
  
- CREATE TYPE bug_typ UNDER issue_typ (
+ CREATE OR REPLACE TYPE bug_typ UNDER issue_typ (
     severity          VARCHAR(20)
     ,version_affected VARCHAR(20)
  );
  /
  
-CREATE TYPE feature_typ UNDER issue_typ (
+CREATE OR REPLACE TYPE feature_typ UNDER issue_typ (
     sponsor VARCHAR(20)
  );
  /

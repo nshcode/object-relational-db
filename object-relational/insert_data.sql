@@ -53,15 +53,6 @@ VALUES (1
     )
  );
 
-/* 
-SELECT
-    DEREF (c.issue).issue_id
-    ,DEREF (c.issue).summary
-FROM comments c
-WHERE DEREF (c.author).account_name = 'alice';
-*/
--- =====================
-
 -- ===============
 -- Products
 -- ===============
@@ -81,16 +72,9 @@ VALUES (
         ,'New'
  );
  
-/* 
-SELECT 
-    DEREF (ip.issue).summary
-    ,DEREF (ip.product).product_name
-FROM issues_products ip
-WHERE ip.status = 'New'
-    and DEREF (ip.issue) IS OF (bug_typ);
- */ 
-  
-
+-- ============
+-- Issue_Tags
+-- ============
 INSERT INTO issue_tags (issue, issue_tags)
 VALUES (
     (SELECT REF(P)
